@@ -11,6 +11,7 @@ import {
 	findIndex,
 	find,
 	without,
+	includes,
 } from 'lodash';
 
 /**
@@ -24,7 +25,7 @@ import {
 	PanelBody,
 } from '@wordpress/components';
 import { getCategories, isSharedBlock } from '@wordpress/blocks';
-import { withDispatch } from '@wordpress/data';
+import { withDispatch, withSelect } from '@wordpress/data';
 
 /**
  * Internal dependencies
@@ -32,6 +33,7 @@ import { withDispatch } from '@wordpress/data';
 import './style.scss';
 import BlockPreview from '../block-preview';
 import ItemList from './item-list';
+import BlockIcon from '../block-icon';
 
 const MAX_SUGGESTED_ITEMS = 9;
 
@@ -56,6 +58,7 @@ export class InserterMenu extends Component {
 	constructor() {
 		super( ...arguments );
 		this.state = {
+			childItems: [],
 			filterValue: '',
 			hoveredItem: null,
 			suggestedItems: [],
@@ -108,8 +111,12 @@ export class InserterMenu extends Component {
 	}
 
 	filter( filterValue = '' ) {
-		const { items } = this.props;
+		const { items, rootChildBlocks } = this.props;
 		const filteredItems = searchItems( items, filterValue );
+
+		const childItems = rootChildBlocks ?
+			filter( filteredItems, ( { name } ) => includes( rootChildBlocks, name ) ) :
+			[];
 
 		let suggestedItems = [];
 		if ( ! filterValue ) {
@@ -142,6 +149,7 @@ export class InserterMenu extends Component {
 
 		this.setState( {
 			hoveredItem: null,
+			childItems,
 			filterValue,
 			suggestedItems,
 			sharedItems,
@@ -151,8 +159,8 @@ export class InserterMenu extends Component {
 	}
 
 	render() {
-		const { instanceId, onSelect } = this.props;
-		const { hoveredItem, suggestedItems, sharedItems, itemsPerCategory, openPanels } = this.state;
+		const { instanceId, onSelect, rootBlockIcon, rootBlockTitle } = this.props;
+		const { childItems, hoveredItem, suggestedItems, sharedItems, itemsPerCategory, openPanels } = this.state;
 		const isPanelOpen = ( panel ) => openPanels.indexOf( panel ) !== -1;
 
 		// Disable reason: The inserter menu is a modal display, not one which
@@ -175,6 +183,18 @@ export class InserterMenu extends Component {
 				/>
 
 				<div className="editor-inserter__results">
+					{ !! childItems.length &&
+						<div className="editor-inserter__child-blocks">
+							<div className="editor-inserter__child-blocks-title">
+								<BlockIcon icon={ rootBlockIcon } />
+								<h2>
+									{ rootBlockTitle }
+								</h2>
+							</div>
+							<ItemList items={ childItems } onSelect={ onSelect } onHover={ this.onHover } />
+						</div>
+					}
+
 					{ !! suggestedItems.length &&
 						<PanelBody
 							title={ __( 'Most Used' ) }
@@ -223,6 +243,22 @@ export class InserterMenu extends Component {
 }
 
 export default compose(
+	withSelect( ( select, { rootUID } ) => {
+		const {
+			getChildBlockNames,
+			getBlockType,
+		} = select( 'core/blocks' );
+		const {
+			getBlockName,
+		} = select( 'core/editor' );
+		const rootBlockName = getBlockName( rootUID );
+		const rootBlockType = getBlockType( rootBlockName );
+		return {
+			rootBlockTitle: rootBlockType && rootBlockType.title,
+			rootBlockIcon: rootBlockType && rootBlockType.icon,
+			rootChildBlocks: getChildBlockNames( rootBlockName ),
+		};
+	} ),
 	withDispatch( ( dispatch ) => ( {
 		fetchSharedBlocks: dispatch( 'core/editor' ).fetchSharedBlocks,
 	} ) ),
