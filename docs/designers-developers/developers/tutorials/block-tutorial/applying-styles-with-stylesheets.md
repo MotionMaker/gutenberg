@@ -17,7 +17,7 @@ The editor will automatically generate a class name for each block type to simpl
 		edit: function( props ) {
 			return el(
 				'p',
-				{ className: props.className },
+				{ id: props.className },
 				'Hello World, step 2 (from the editor, in green).'
 			);
 		},
@@ -67,7 +67,7 @@ The stylesheets enqueued by `style` are the base styles and are loaded first. Th
 Let's move on into code. Create a file called `editor.css`:
 
 ```css
-.wp-block-gutenberg-examples-example-02-stylesheets {
+#wp-block-gutenberg-examples-example-02-stylesheets {
 	color: green;
 	background: #cfc;
 	border: 2px solid #9c9;
